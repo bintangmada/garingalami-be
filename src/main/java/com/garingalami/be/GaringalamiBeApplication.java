@@ -8,6 +8,7 @@ public class GaringalamiBeApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(GaringalamiBeApplication.class, args);
+		System.out.println("SERVER IS RUNNING");
 	}
 
 }

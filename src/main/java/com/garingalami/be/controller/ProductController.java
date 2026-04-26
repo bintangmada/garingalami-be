@@ -10,11 +10,13 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
-@CrossOrigin(origins = "*") // Allow frontend to access
 public class ProductController {
 
     @Autowired
     private ProductService productService;
+
+    @Autowired
+    private com.garingalami.be.service.AdminLogService adminLogService;
 
     // Public: Get all products
     @GetMapping
@@ -41,15 +43,19 @@ public class ProductController {
 
     // Admin: Create new product
     @PostMapping("/admin")
-    public Product createProduct(@RequestBody Product product) {
-        return productService.createProduct(product);
+    public Product createProduct(@RequestBody Product product, @RequestHeader(value = "X-Admin-User", defaultValue = "Admin") String adminUser) {
+        Product created = productService.createProduct(product);
+        adminLogService.log(adminUser, "CREATE_PRODUCT", "Created product: " + created.getName() + " (ID: " + created.getId() + ")");
+        return created;
     }
 
     // Admin: Update product
     @PutMapping("/admin/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product product) {
+    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product product, @RequestHeader(value = "X-Admin-User", defaultValue = "Admin") String adminUser) {
         try {
-            return ResponseEntity.ok(productService.updateProduct(id, product));
+            Product updated = productService.updateProduct(id, product);
+            adminLogService.log(adminUser, "UPDATE_PRODUCT", "Updated product: " + updated.getName() + " (ID: " + id + ")");
+            return ResponseEntity.ok(updated);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
@@ -57,8 +63,9 @@ public class ProductController {
 
     // Admin: Delete product
     @DeleteMapping("/admin/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id, @RequestHeader(value = "X-Admin-User", defaultValue = "Admin") String adminUser) {
         productService.deleteProduct(id);
+        adminLogService.log(adminUser, "DELETE_PRODUCT", "Permanently removed product ID: " + id);
         return ResponseEntity.ok().build();
     }
 }

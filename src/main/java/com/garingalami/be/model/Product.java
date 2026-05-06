@@ -45,7 +45,11 @@ public class Product {
     private LocalDateTime updatedAt;
 
     @Column(name = "expiry_date")
-    private LocalDateTime expiryDate;
+    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd")
+    private java.time.LocalDate expiryDate;
+
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductImage> gallery = new ArrayList<>();

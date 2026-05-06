@@ -19,9 +19,18 @@ public class User {
     @Column(nullable = false, unique = true)
     private String username;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String password;
 
     @Column(nullable = false)
-    private String role; // e.g., "ROLE_ADMIN"
+    private String email;
+
+    @Column(name = "google_id", unique = true)
+    private String googleId;
+
+    @Column(name = "profile_picture")
+    private String profilePicture;
+
+    @Column(nullable = false)
+    private String role; // e.g., "ROLE_USER", "ROLE_ADMIN"
 }

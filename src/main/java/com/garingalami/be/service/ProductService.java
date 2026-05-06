@@ -4,11 +4,14 @@ import com.garingalami.be.model.Product;
 import com.garingalami.be.model.ProductImage;
 import com.garingalami.be.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 public class ProductService {
@@ -16,20 +19,37 @@ public class ProductService {
     @Autowired
     private ProductRepository productRepository;
 
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public Page<Product> getAllProducts(Pageable pageable) {
+        return productRepository.findAll(pageable);
     }
 
     public Optional<Product> getProductById(Long id) {
         return productRepository.findById(id);
     }
 
-    public List<Product> getProductsByCategory(String category) {
-        return productRepository.findByCategory(category);
+    public Map<String, Long> getInventoryStats() {
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("totalActive", productRepository.countByActiveTrue());
+        stats.put("totalStock", productRepository.getTotalStock());
+        stats.put("archivedCount", productRepository.getArchivedCount());
+        stats.put("categoryCount", productRepository.getCategoryCount());
+        return stats;
     }
 
-    public List<Product> searchProducts(String name) {
-        return productRepository.findByNameContainingIgnoreCase(name);
+    @Transactional
+    public Product toggleProductStatus(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        product.setActive(!product.isActive());
+        return productRepository.save(product);
+    }
+
+    public Page<Product> getProductsByCategory(String category, Pageable pageable) {
+        return productRepository.findByCategory(category, pageable);
+    }
+
+    public Page<Product> searchProducts(String name, Pageable pageable) {
+        return productRepository.findByNameContainingIgnoreCase(name, pageable);
     }
 
     @Transactional
@@ -52,6 +72,7 @@ public class ProductService {
             product.setDescription(productDetails.getDescription());
             product.setQuota(productDetails.getQuota());
             product.setMainImageUrl(productDetails.getMainImageUrl());
+            product.setExpiryDate(productDetails.getExpiryDate());
             
             // Handle gallery updates
             if (productDetails.getGallery() != null) {
@@ -68,6 +89,9 @@ public class ProductService {
 
     @Transactional
     public void deleteProduct(Long id) {
-        productRepository.deleteById(id);
+        productRepository.findById(id).ifPresent(product -> {
+            product.setActive(false);
+            productRepository.save(product);
+        });
     }
 }

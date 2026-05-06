@@ -3,10 +3,11 @@ package com.garingalami.be.controller;
 import com.garingalami.be.model.Product;
 import com.garingalami.be.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
@@ -18,10 +19,16 @@ public class ProductController {
     @Autowired
     private com.garingalami.be.service.AdminLogService adminLogService;
 
-    // Public: Get all products
+    // Admin: Get Inventory Stats
+    @GetMapping("/admin/stats")
+    public ResponseEntity<java.util.Map<String, Long>> getInventoryStats() {
+        return ResponseEntity.ok(productService.getInventoryStats());
+    }
+
+    // Public: Get all products (Paginated)
     @GetMapping
-    public List<Product> getAllProducts() {
-        return productService.getAllProducts();
+    public Page<Product> getAllProducts(@PageableDefault(size = 10) Pageable pageable) {
+        return productService.getAllProducts(pageable);
     }
 
     // Public: Get product by ID
@@ -32,13 +39,14 @@ public class ProductController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Public: Search and filter
+    // Public: Search and filter (Paginated)
     @GetMapping("/search")
-    public List<Product> searchProducts(@RequestParam(required = false) String name, 
-                                       @RequestParam(required = false) String category) {
-        if (category != null) return productService.getProductsByCategory(category);
-        if (name != null) return productService.searchProducts(name);
-        return productService.getAllProducts();
+    public Page<Product> searchProducts(@RequestParam(required = false) String name, 
+                                        @RequestParam(required = false) String category,
+                                        @PageableDefault(size = 10) Pageable pageable) {
+        if (category != null) return productService.getProductsByCategory(category, pageable);
+        if (name != null) return productService.searchProducts(name, pageable);
+        return productService.getAllProducts(pageable);
     }
 
     // Admin: Create new product
@@ -59,6 +67,15 @@ public class ProductController {
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    // Admin: Toggle product status (Active/Inactive)
+    @PatchMapping("/admin/{id}/toggle")
+    public ResponseEntity<Product> toggleProductStatus(@PathVariable Long id, @RequestHeader(value = "X-Admin-User", defaultValue = "Admin") String adminUser) {
+        Product updated = productService.toggleProductStatus(id);
+        String status = updated.isActive() ? "ACTIVATED" : "DEACTIVATED";
+        adminLogService.log(adminUser, "TOGGLE_STATUS", status + " product: " + updated.getName() + " (ID: " + id + ")");
+        return ResponseEntity.ok(updated);
     }
 
     // Admin: Delete product
